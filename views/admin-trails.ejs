@@ -1,0 +1,61 @@
+<h2>Trails</h2>
+
+
+	<div id="trails-list">
+	<br />
+		<div class="tablestyle">
+			<table>
+			  <tr>
+				<th>User ID</th>
+				<th>Coordinates</th>
+				<th>Category</th>
+				<th>Date</th>
+				<th></th>
+				<th></th>
+			  </tr>
+			  <% trails.forEach( function( trail ){ %>
+			 
+			  <tr class="trail">
+				<td><%= trail.uid %></td>
+				<td><%= trail.lat %>, <%= trail.lon %></td>
+				<td><%= trail.cat.name %></td>
+				<td><%= trail.date %></td>
+				<td><a href="/deleteTrail/<%= trail._id %>" title="Delete this trail" class="button" onClick="return confirm('Are you sure?')">Delete</a></td>
+				<td><a href="/deleteTrails/<%= trail.uid %>" title="Delete all trails of this user" class="button" onClick="return confirm('All trails of this user will be deleted. Proceed?')">Delete all</a></td>
+			  </tr>
+
+			  <% }); %>
+			</table>
+		</div>
+	</div>
+	
+	<script>
+	
+	$(document).ready(function () {
+	
+		var lastId = "";
+		var color = false;
+		
+			$("tr.trail").each(function() {
+				
+				var uid = $(this).find("td:first").html();    
+				
+				if( (lastId == "") || (uid == lastId) ) {
+					//do nothing
+				} else {
+					//change the table style
+					if( color == false ) {
+						color = true;
+					} else {
+						color = false;
+					}
+				}
+				if(color == true) {
+					$(this).addClass('alt');
+				}
+				lastId = uid;
+			});
+			
+	});
+
+	</script>

@@ -1,0 +1,87 @@
+<div id="categories" class="categories">	
+<form id="cat-form">
+	<fieldset>
+		<legend><span class="legend">Add a relationship event</span></legend>
+		<p style="text-align:center;"><span id="trailname-span">Your love trail</span>&nbsp;
+		<a href="#" onClick="showTrailnameEdit();" title="Edit your trailname">
+		<img id="edit-image" class="rem" src="../images/edit.png" alt="edit" title="Edit your trailname" height="13" width="13"/>
+		</a></p>
+		<div id="trailname" style="display:none;">
+			<input id="trailname-input" type="text" class="catInput" name="name" style="align:center;width:50%;" maxlength="20" /><br/>
+			<button onClick="saveTrailname();" id="save-trailname-button" type="button" value="Save"> Save </button>
+		</div>
+		<br/>
+		<p>
+		<ul style="list-style-type: none; text-align: left;">
+			<% categories.forEach( function( category ){ %>
+				<li>
+					<input type="radio" name="category" value="<%= category._id %>" id="<%= category._id %>" />
+					<label for="<%= category._id %>"><%= category.name %></label>
+					<img class="rem" src="<%= category.icon %>" title="<%= category.name %>" alt="<%= category.name %> icon" height="16" width="16" />
+				</li>
+			<% }); %>
+		</ul>
+		<br/>
+		<label for="datepicker">You can provide a date (optional)</label><br/>
+		<input type="text" id="datepicker" class="catInput" name="desc" style="width:50%;" />
+		<br/><br/>
+		</p>
+		<input type="submit" class="button" value="Save" />
+	</fieldset>
+</form>
+
+</div>
+
+<script>
+
+function showTrailnameEdit() {
+	$("#trailname").slideToggle();
+	var inputValue = $("#trailname-input").val();
+	var spanValue = $("#trailname-span").text();
+	if(inputValue == "") {
+		$("#trailname-input").val(spanValue);
+	}
+}
+
+function saveTrailname() {
+	showTrailnameEdit();
+	var inputValue = $("#trailname-input").val();
+	var spanValue = $("#trailname-span").text();
+	if(inputValue != spanValue) {
+		$("#trailname-span").text(inputValue);
+		$("#info-trailname-span").text(inputValue);
+		var data = {
+			"name"	: inputValue
+		};
+		updateTrailname(data);
+	}
+}
+
+/*
+ * Create a trail
+ */
+function updateTrailname(data) {
+	$.ajax(
+	{
+		type: 'POST',
+		url: '/updateTrailname',
+		dataType: 'text',
+		data: JSON.stringify(data),
+		contentType: 'application/json; charset=utf-8',
+		success: function (result) {
+		
+        },
+		error: function (jqXHR, textStatus, error) {
+			alert("Error: " + error);
+			if(jqXHR.status == "500") {
+				alert("This site requires cookies enabled!");
+			}
+		}
+
+    });
+}
+
+
+
+
+</script>

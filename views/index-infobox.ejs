@@ -1,0 +1,36 @@
+<div id="infobox" class="infobox show">
+<form id="trails-form">
+	<fieldset>
+		<legend><span id="info-trailname-span">Your love trail</span></legend>
+		<p>
+		<ul style="list-style-type: none; text-align: left;">
+			<% userTrails.forEach( function( trail ){ %>
+			<p>
+				<span id="list-trailname-span" style="display:none;"><%= trail.name %></span>
+				<a href="#" onClick="beamTo(<%= trail.lat %>, <%= trail.lon %>)" title="<%= trail.desc %>"><%= trail.cat.name %></a></span>
+				<a href="/deleteTrail/<%= trail._id %>" title="Delete this event"  onClick="return confirm('Do you really want to delete this event?')">
+				<img class="rem" src="../images/remove.png" alt="Delete" title="Delete this event" height="13" width="13" align="right" style="vertical-align:bottom;">
+				</a>
+			</p>
+			<% }); %>
+		</ul>
+		</p>
+	</fieldset>
+</form>
+
+
+</div>
+
+<script>
+
+$(document).ready(function(){
+	var spanValue = $("#list-trailname-span").text();
+	if(spanValue == "") {
+		$("#info-trailname-span").text("Your love trail");
+	} else {
+		$("#info-trailname-span").text(spanValue);
+		$("#trailname-span").text(spanValue);
+	}
+});
+
+</script>

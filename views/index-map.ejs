@@ -1,0 +1,405 @@
+<div id="map" style="position: relative;"></div>
+	<style>
+		.mycluster {
+			width: 40px;
+			height: 40px;
+			background-color: black;
+			text-align: center;
+			font-size: 24px;
+			color: black;
+		}
+	</style>
+
+<script>
+
+	var trailList = <%- JSON.stringify(trailList) %>;
+	var userTrails = <%- JSON.stringify(userTrails) %>;
+	
+	var map;
+	var userId = "";
+	var userLocation = "";
+	var myLayer = new L.LayerGroup();
+	var iconLayer = new L.MarkerClusterGroup();
+	var iconBGLayer = new L.MarkerClusterGroup();
+	var trailLayer = new L.LayerGroup();
+
+	/*
+	 * Helper functions
+	 */	
+	function getRandomColor() {
+		var letters = '0123456789ABCDEF'.split('');
+		var color = '#';
+		for (var i = 0; i < 6; i++ ) {
+			color += letters[Math.round(Math.random() * 15)];
+		}
+		return color;
+	}
+	
+	var ltIcon = L.Icon.extend({
+		options: {
+			//shadowUrl: '../images/marker/marker-shadow.png',
+			iconSize: [16,16],
+			iconAnchor:   [8,8],
+		}
+	});
+
+	
+	function getIcon(icon) {
+		return new ltIcon({iconUrl: icon});
+	}
+	
+	function getLineOptions(c) {
+		if(typeof c == 'undefined'){
+			var color = getRandomColor();
+		} else {
+			var color = c;
+		}
+		
+
+		var line_options = 
+		{
+			color: color,      
+			opacity: 0.8,         // Stroke opacity
+			weight: 3,         // Stroke weight
+			fillColor: color,  // Fill color
+			fillOpacity: 0.8,    // Fill opacity
+			dashArray: '8',
+			lineCap: 'round'
+		};
+		return line_options;
+	}
+	
+	function beamTo(lat, lon) {
+		map.panTo([lat, lon], 15);
+	}
+
+	/*
+	 * Takes the full list of trails and brings them to the map
+	 * If a trail belongs to the user watching -> color it #CD5C5C
+	 * Else get a random color
+	 */
+	function getTrails() {
+			
+		var polylineData = Array();
+		var lastUid = "";
+		var color = "";
+		
+		/* Iterate through all trails */
+		trailList.forEach( function(trail) {
+			
+			//first trail
+			if(lastUid == "") {
+				if(trail.uid == userId) {
+					color = "#CD5C5C";
+				} else {
+					color = getRandomColor();
+				}
+				polylineData.push([trail.lat, trail.lon]);
+			} else if(lastUid == trail.uid) {
+				polylineData.push([trail.lat, trail.lon]);
+			} else {
+			
+				if(lastUid == userId) {
+					addTrailToLayer(polylineData, color, true);
+				} else {
+					addTrailToLayer(polylineData, color, false);
+				}
+					
+				//refresh array data
+				polylineData = new Array();
+				polylineData.push([trail.lat, trail.lon]);
+				
+				if(trail.uid == userId) {
+					color = "#CD5C5C";
+				} else {
+					color = getRandomColor();
+				}
+			}
+				
+			addIconToLayer(trail, color);
+
+			lastUid = trail.uid;
+				
+		});
+			
+		if(lastUid == userId) {
+			addTrailToLayer(polylineData, color, true);
+		} else {
+			addTrailToLayer(polylineData, color, false);
+		}
+
+		return polylineData;
+
+	}
+	
+	function addTrailToLayer(dataArray, color, currentUser) {
+	
+		if(currentUser) {
+			L.polyline(dataArray, getLineOptions(color)).addTo(myLayer);
+		} else {
+			L.polyline(dataArray, getLineOptions(color)).addTo(trailLayer);
+		}
+		
+	}
+	
+	function addIconToLayer(trail, color) {
+
+		var iconMarker = L.marker([trail.lat, trail.lon], {className: 'mycluster', icon: getIcon(trail.cat.icon), title: trail.cat.name }).addTo(iconLayer);
+		iconMarker.bindPopup('<p>'+trail.cat.name+'</p>');
+		
+		// clones the marker -> have 2 markers on one place
+		var circMarker = L.circleMarker([trail.lat, trail.lon], {
+					radius: 15,
+					color: color,
+					weight: 1,
+					opacity: 1,
+					fillColor: color,
+					fillOpacity: 0.7
+				}).addTo(iconBGLayer);
+		circMarker.bindPopup('<p>'+trail.cat.name+'</p>');
+
+		console.log(iconMarker);
+		
+	}
+	
+	/*
+	 * If the user already has tracked an event:
+	 * 1) Set the userId
+	 * 2) Set the map the last tracked event
+	 * If not -> default view
+	 */
+	function getLastTrail() {
+		
+		if(typeof userTrails[userTrails.length-1] == 'undefined') {
+		
+			map.setView(L.latLng(48.20637,16.41495), 9);
+			$("#edit-image").hide();
+		
+		} else {
+		
+			var lastTrail = userTrails[userTrails.length-1];
+			userId = lastTrail.uid;
+			map.setView(L.latLng(lastTrail.lat,lastTrail.lon), 15);
+			
+		}
+				
+	}
+	
+	/*
+	 * Creates a trail in the database (if cookies enabled)
+	 * Redirects on success
+	 */
+	function createTrail(data) {
+		$.ajax(
+		{
+			type: 'POST',
+			url: '/createTrail',
+			dataType: 'text',
+			data: JSON.stringify(data),
+			contentType: 'application/json; charset=utf-8',
+			success: function () {
+				window.location.href = "/";
+				
+            },
+			error: function (jqXHR, textStatus, error) {
+				if(jqXHR.status == "500") {
+					alert("This site requires cookies enabled!");
+				}
+			}
+
+        });
+    }
+
+			
+$( document ).ready(function() {
+	
+	//Map elements
+	var popup;
+	var userMarker;
+
+			
+	//Page elements
+	var info = $('#infobox');
+	var cats = $('#categories');
+	var manual = $('#manual');
+	var doc = $(document);
+	
+	var cloudmadeUrl = 'http://{s}.tiles.mapbox.com/v3/martinkosk.i20ckd3k/{z}/{x}/{y}.png',
+		cloudmadeAttribution = 'Map data &copy; 2014 Mapbox.com';
+		
+	//Layer setup
+	var minimal 	= L.tileLayer(cloudmadeUrl, {styleId: 77922, attribution: cloudmadeAttribution}),
+		minimal2	= L.tileLayer(cloudmadeUrl, {styleId: 22677, attribution: cloudmadeAttribution}),
+		detailed 	= L.tileLayer(cloudmadeUrl, {styleId: 997, attribution: cloudmadeAttribution});
+	
+	//Map setup	
+	map = L.map('map', {
+		layers: [minimal, myLayer, trailLayer, iconLayer, iconBGLayer]
+	});
+	
+	getLastTrail();
+	
+	//GeoSearch panel
+	new L.Control.GeoSearch({
+		provider: new L.GeoSearch.Provider.OpenStreetMap(),
+		position: 'topcenter',
+		showMarker: false
+	}).addTo(map);
+	
+	var baseMaps = {
+		"Minimal": minimal,
+		"City": detailed
+	};
+
+	var overlayMaps = {
+		"My trail": myLayer,
+		"All trails": trailLayer,
+		"Icons": iconLayer
+	};
+	
+	L.control.layers(baseMaps, overlayMaps).addTo(map);
+		
+	userMarker = L.marker(L.latLng(48.20637,16.41495));
+						
+	userMarker.on('click', function() {
+		cats.addClass('show');
+			$('#map').click(function() {
+				cats.removeClass('show');
+				$( "#datepicker" ).datepicker("hide");
+			});
+	});
+						
+	popup = L.popup();
+						
+	userMarker.addTo(map);
+		
+	getTrails();
+					
+	map.on('click', onMapClick);
+
+    
+
+	// reset the userMarker
+	function onMapClick(e) {
+		userMarker.setLatLng(e.latlng);
+	}
+			
+	$('#cat-form').submit(function( event ) {
+		event.preventDefault();
+			
+		var cat = $('input[name=category]:checked', 'form').val();
+
+		if(typeof cat == 'undefined'){
+			alert("Please select an event!");
+		} else {
+		
+		var desc = $('input[name=desc]').val();
+		
+		
+		
+		if(desc == "") {
+			desc = $('label[for="' + cat + '"]').html();
+		}
+			
+		var markerPos = userMarker.getLatLng();
+		
+		userLocation = markerPos;
+			
+		var data = {
+			"lat"	: markerPos.lat,
+			"lon"	: markerPos.lng,
+			"cat"	: cat,
+			"desc"	: desc
+		};
+			
+		createTrail(data);
+			
+		cats.removeClass('show');
+		
+		}
+
+	});
+	
+	var trailControl = L.control({position: 'bottomleft'});
+
+		trailControl.onAdd = function (map) {
+			this._div = L.DomUtil.create('div', 'leaflet-control-trails');
+			 L.DomEvent
+				.addListener(this._div , 'click', L.DomEvent.stopPropagation)
+				.addListener(this._div , 'click', L.DomEvent.preventDefault)
+				.addListener(this._div , 'click', function () { 
+					showInfobox();
+				});
+
+			var controlUI = L.DomUtil.create('div', 'leaflet-control-trails-toggle', this._div );
+			controlUI.title = 'Show my trails';
+			return this._div;
+	};		
+	
+	trailControl.addTo(map);
+	
+	var infoControl = L.control({position: 'bottomleft'});
+	
+	infoControl.onAdd = function (map) {
+	
+			this._div = L.DomUtil.create('div', 'leaflet-control-info');
+			 L.DomEvent
+				.addListener(this._div , 'click', L.DomEvent.stopPropagation)
+				.addListener(this._div , 'click', L.DomEvent.preventDefault)
+				.addListener(this._div , 'click', function () { showManual(); });
+
+			var controlUI = L.DomUtil.create('div', 'leaflet-control-info-toggle', this._div );
+			controlUI.title = 'Help';
+
+			return this._div;
+	};
+	
+	infoControl.addTo(map);
+
+	var infoBox = true;
+	function showInfobox() {
+	
+	if(!infoBox) {
+		info.addClass('show');
+		infoBox = true;
+	} else {
+		info.removeClass('show');
+		infoBox = false;
+	}
+
+	}
+	
+	function showManual() {
+		manual.addClass('show');
+		manual.click(function() {
+			manual.removeClass('show');
+		});
+	}
+	
+	$( "#datepicker" ).datepicker({
+		changeMonth: true,
+		changeYear: true,
+		dateFormat: "DD, d MM, yy",
+		yearRange: "1950:2024"
+	  });
+	
+	var loginControl = L.control({position: 'bottomleft'});
+	
+	loginControl.onAdd = function (map) {
+	
+			this._div = L.DomUtil.create('div', 'leaflet-control-info');
+			 L.DomEvent
+				.addListener(this._div , 'click', L.DomEvent.stopPropagation)
+				.addListener(this._div , 'click', L.DomEvent.preventDefault)
+				.addListener(this._div , 'click', function () { location.href = 'admin'; });
+
+			var controlUI = L.DomUtil.create('div', 'leaflet-control-login-toggle', this._div );
+			controlUI.title = 'Administration';
+
+			return this._div;
+	};
+	
+	loginControl.addTo(map);
+
+});
+</script>

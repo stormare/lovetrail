@@ -1,0 +1,80 @@
+<h2>Edit category</h2>
+	<br />
+
+		<% categories.forEach( function( category ){ %>
+			  <% if( category._id == current ){ %>
+				<form action="/updateCategory/<%= category._id %>" method="post" accept-charset="utf-8">
+					<label for="catName"><strong>Name</strong></label>
+					<input type="text" size="40" class="margin-left-px" name="catName" value="<%= category.name %>" required/><br />
+					<label for="icon"><strong>Icon</strong></label>
+					<input id="icon-input" size="80" class="margin-left-px" type="text" name="icon" value="<%= category.icon %>" required readonly/><br /><br />
+					<input type="submit" title="Save changes" class="button" value="Save" />
+					<a href="/admin" title="Cancel this edit" class="button">Cancel</a>
+				</form>
+			  <% } %>
+		<% }); %>
+		
+
+	<br />
+
+		<legend><strong>Select icon</strong></legend><br />
+		<form id="image-remove" action="/delete" method="post" accept-charset="utf-8">
+			<select id="edit-icon-select" class="catSelect" name="icon[]" size="5" required>
+				<option value="">Select an icon!</option>
+			</select>
+			<img id="myImage" src="" class="margin-left-px"></img><br/>
+		</form>
+
+	
+<script>
+
+$(document).ready(function(){
+	//select icon in the selector
+	var currentIcon = $("#icon-input").val();
+	
+	getFileList();
+    // when the select changes...
+    $( "#edit-icon-select" ).change(function(event) {
+
+        var image = $(this).find( ":selected" ).attr( "value" );
+
+        // configure the src attribute of the img tag to use the value of the select option img attribute
+        $( "#myImage" ).attr( "src", image );
+		$( "#icon-input" ).attr( "value", image);
+    });
+	
+
+	
+});
+/*
+ * Retrieve a list of all files in the /public/images/marker directory
+ * Append them to the icon selector
+ */
+function getFileList() {
+	$.ajax(
+	{
+			type: 'GET',
+			url: '/getFileList',
+			success: function (result) {
+				var files = result;
+				var option = '';
+				for (i=0;i<files.length;i++){
+					var imagePath = files[i];
+					var split = imagePath.split("./public/images/marker/");
+				   option += '<option value="'+ '../images/marker/' + split[1] + '">' + split[1]; + '</option>';
+				}
+				$('#edit-icon-select').append(option);
+				var currentIcon = $("#icon-input").val();
+				$('#edit-icon-select option[value="' + currentIcon +'"]').prop("selected", true);
+				$( "#myImage" ).attr( "src", currentIcon);
+				
+			},
+			error: function (req, status, error) {
+				alert("Could not get file list " + error + " " + req + " " + status);	
+			}
+	});
+}
+
+</script>
+	
+	

@@ -1,0 +1,253 @@
+<h2>Categories</h2>
+		
+	<div id="categories-list">
+	<br />
+		<div class="tablestyle">
+			<table width="100%">
+			  <tr>
+				<th>Icon</th>
+				<th>Name</th>
+				<th>Icon Path</th>
+				<th></th>
+				<th></th>
+			  </tr>
+			  <% categories.forEach( function( category ){ %>
+			  <tr>
+				<td><img src="<%= category.icon %>" title="<%= category.name %>"  /></td>
+				<td><%= category.name %></td>
+				<td><%= category.icon %></td>
+				<td><a href="/deleteCategory/<%= category._id %>" title="Delete this category" onClick="return confirm('Deleting a category also deletes all related trails. Proceed?')" class="button right">Delete</a></td>
+				<td><a href="/editCategory/<%= category._id %>" title="Edit this category" class="button left">Edit</a></td>
+			  </tr>
+			  <% }); %>
+			</table>
+		</div>
+
+		<br /><br />
+		<h2>Edit</h2>
+		<br />
+
+		<button id="create-category-btn" type="button" class="button" value="Create category" onClick="showCreateDialog();">Create category</button>
+		<button id="upload-icons-btn" type="button" class="button" value="Upload icons" onClick="showUploadDialog();">Upload icons</button>
+		<button id="remove-icon-btn" type="button" class="button" value="Remove icons" onClick="showRemoveDialog();">Remove icon</button>
+	</div>
+
+	<div id="create-category-form">
+		<br />
+		<legend><strong>Create new category</strong></legend>
+		<form action="/createCategory" method="post" accept-charset="utf-8">
+			<label for="catName">Name</label><input class="margin-left-px" placeholder="write the name here" type="text" name="catName" required/><br/>
+			<label for="icon">Icon</label>
+			<input id="selectedIcon" class="margin-left-px" type="text" name="icon" required readonly/>
+			<br /><br />
+			<input type="submit" title="Save new category" class="button" value="Save" />
+			<a href="/admin" title="Cancel this edit" class="button">Cancel</a>
+		</form>
+
+	</div>
+	
+	<div id="select-icon-form">
+		<br />
+		<legend><strong>Select icon</strong></legend>
+		<form id="image-remove" action="/remove" method="post" accept-charset="utf-8">
+			<select id="icon-select" class="catSelect" name="icon" size="3" required>
+				<option value="">Select an icon!</option>
+			</select>
+			<img id="myImage" class="margin-left-px" src=""></img><br /><br />   
+			<input id="remove-btn" type="submit" class="button" value="Delete" />
+			<div id="remove-response"></div>
+		</form>
+
+	</div>
+		
+	<div id="upload-icons-form">
+		<br />
+		<legend><strong>Add new icons</strong></legend><br />
+		<form id="image-uploads" action="/upload" method="post" enctype="multipart/form-data">
+			<input id="control" type="file" name="images" multiple /><br /><br />
+			<input type="submit" class="button" value="Upload" />
+			<a href="/admin" title="Cancel this upload" class="button">Cancel</a>
+			<div id="upload-response"></div>
+		</form>
+
+	</div>
+	
+
+	
+<script>
+
+/* Category management visibility */
+$(document).ready(function(){
+	$("#create-category-form").hide();
+	$("#select-icon-form").hide();
+	$("#upload-icons-form").hide();
+});
+
+
+function showRemoveDialog() {
+	$("#create-category-form").hide();
+	$("#upload-icons-form").hide();
+	if($("#select-icon-form").is(":hidden")) {
+		$("#select-icon-form").slideToggle();	
+	}
+	$("#remove-btn").show();
+}
+
+function showUploadDialog() {
+$("#create-category-form").hide();
+$("#select-icon-form").hide();
+$("#upload-icons-form").slideToggle();
+}
+
+function showCreateDialog() {
+$("#upload-icons-form").hide();
+$("#create-category-form").slideToggle();
+if($("#select-icon-form").is(":hidden")) {
+		$("#select-icon-form").slideToggle();
+}
+$("#remove-btn").hide();
+}
+
+/*
+ * Handle file uploads
+ * Loop through the array and call the uploadFile for each image
+ * Reset after finish (because no redirect used)
+ */
+$('#image-uploads').submit(function( event ) {
+	event.preventDefault();
+	
+	$('#upload-response').empty();
+		
+	// Loop through each file input
+	$('input[type="file"]').each(function(i) {
+
+		// Get an array of the files for this input
+		var files = $(this).get(0).files;
+
+		// Loop through files
+		for (var j=0; file = files[j]; j++) {
+		
+			var fd = new FormData();    
+			fd.append('image', files[j]);
+
+			uploadFile(fd);
+			
+		}
+	});
+	
+	var control = $("#control");
+
+	control.replaceWith( control = control.clone( true ) );
+	
+
+});
+
+$('#image-remove').submit(function( event ) { 
+	event.preventDefault();
+	var selectedValue = $( "#icon-select" ).val();
+	//alert(selectedValue);
+	var str = selectedValue.split("../");
+	
+
+	var file = {
+			"path"	: str[1]
+	};
+	
+	if(confirm('This will permanently delete the selected icon. Proceed?')){
+		removeFile(file);
+	}
+
+});
+
+/*
+ * Calls the remove function in admin.js
+ */
+function removeFile(data) {
+	$.ajax(
+	{
+		type: 'POST',
+		url: '/remove',
+		dataType: 'text',
+		data: data,
+		success: function (result) {
+			alert(result);
+			window.location.href = "/admin";
+				
+            },
+			error: function (req, status, error) {
+				alert("Could not POST " + error + " " + req + " " + status);	
+			}
+	});
+}
+
+/*
+ * Calls the upload function in admin.js
+ * Populates upload-reponse div with server response
+ */
+function uploadFile(image) {
+	$.ajax(
+	{
+			type: 'POST',
+			url: '/upload',
+			data: image,
+			cache: false,
+			dataType: 'text',
+			processData: false,
+			contentType: false,
+			success: function (result) {
+				$("#upload-response").append(result+"\n");
+            },
+			error: function (req, status, error) {
+				alert("Could not upload image " + error + " " + req + " " + status);	
+			}
+
+    });
+}
+
+/*
+ * Retrieve a list of all files in the /public/images/marker directory
+ * Append them to the icon selector
+ */
+function getFileList() {
+	$.ajax(
+	{
+			type: 'GET',
+			url: '/getFileList',
+			success: function (result) {
+				var files = result;
+				var option = '';
+				for (i=0;i<files.length;i++){
+					var imagePath = files[i];
+					var split = imagePath.split("./public/images/marker/");
+				   option += '<option value="'+ '../images/marker/' + split[1] + '">' + split[1]; + '</option>';
+				}
+				$('#icon-select').append(option);
+				
+			},
+			error: function (req, status, error) {
+				alert("Could not get file list " + error + " " + req + " " + status);	
+			}
+	});
+}
+
+/*
+ * Executes the getFileList function
+ * Listens to file selector ChangeEvents in order to dynamically show the selected marker
+ */
+$(function(){
+	getFileList();
+    // when the select changes...
+    $( "#icon-select" ).change(function(event) {
+
+        // gets the img attribute (custom attribute) of the selected option
+        var image = $(this).find( ":selected" ).attr( "value" );
+
+        // configure the src attribute of the img tag to use the value of the select option img attribute
+        $( "#myImage" ).attr( "src", image );
+		$( "#selectedIcon" ).attr( "value", image);
+    });
+});
+
+
+</script>
+	
