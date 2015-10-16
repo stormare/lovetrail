@@ -63,8 +63,8 @@ var SampleApp = function() {
         if (typeof self.ipaddress === "undefined") {
             //  Log errors on OpenShift but continue w/ 127.0.0.1 - this
             //  allows us to run/test the app locally.
-            console.warn('No OPENSHIFT_NODEJS_IP var, using 127.0.0.1');
-            self.ipaddress = "127.0.0.1";
+            console.warn('No OPENSHIFT_NODEJS_IP var, using 0.0.0.0');
+            self.ipaddress = "0.0.0.0";
         };
     };
 
@@ -166,7 +166,7 @@ var SampleApp = function() {
 	self.initializeDatabase = function () {
 		
 		// default to a 'localhost' configuration:
-		var connection_string = '127.0.0.1:27017/lovetrail';
+		var connection_string = 'db:27017/lovetrail';
 		// if OPENSHIFT env variables are present, use the available connection info:
 		if(process.env.OPENSHIFT_MONGODB_DB_PASSWORD){
 		  connection_string = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ":" +
